@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GetTradesStatus } from './getTradesStatus';
 
-export interface HealthStatus {
-  status: string;
-}
+export type GetTradesParams = {
+status?: GetTradesStatus;
+};

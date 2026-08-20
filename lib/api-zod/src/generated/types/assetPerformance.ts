@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface AssetPerformance {
+  assetClass: string;
+  label: string;
+  pnl: number;
+  roi: number;
+  trades: number;
 }

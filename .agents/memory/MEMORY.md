@@ -1,0 +1,1 @@
+- [OpenAPI integer fields](openapi-zod-compatibility.md) — avoid integer/format-int32 schemas when this workspace's Zod generator emits unsupported `zod.int()`.

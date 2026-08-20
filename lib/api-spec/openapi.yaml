@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Paper trading dashboard and analytics
+  - name: scanner
+    description: Autonomous opportunity scanner
+  - name: trades
+    description: Simulated paper trades
 paths:
   /healthz:
     get:
@@ -24,6 +30,143 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get paper trading dashboard
+      responses:
+        "200":
+          description: Dashboard snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /markets:
+    get:
+      operationId: getMarkets
+      tags: [dashboard]
+      summary: List monitored instruments
+      responses:
+        "200":
+          description: Monitored instruments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Market"
+  /opportunities:
+    get:
+      operationId: getOpportunities
+      tags: [scanner]
+      summary: List ranked opportunities
+      parameters:
+        - name: assetClass
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: strategy
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ranked opportunities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Opportunity"
+  /scanner/run:
+    post:
+      operationId: runScanner
+      tags: [scanner]
+      summary: Run the autonomous opportunity scanner
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScannerRunInput"
+      responses:
+        "200":
+          description: Scanner result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannerRun"
+  /trades:
+    get:
+      operationId: getTrades
+      tags: [trades]
+      summary: List simulated trades
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, closed, all]
+      responses:
+        "200":
+          description: Simulated trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trade"
+    post:
+      operationId: createTrade
+      tags: [trades]
+      summary: Open a simulated paper trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeInput"
+      responses:
+        "201":
+          description: Opened paper trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+  /trades/{tradeId}/close:
+    post:
+      operationId: closeTrade
+      tags: [trades]
+      summary: Close a simulated paper trade
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeCloseInput"
+      responses:
+        "200":
+          description: Closed paper trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trade"
+        "404":
+          description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +176,173 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    Market:
+      type: object
+      required: [symbol, name, assetClass, price, change, changePercent, session, sparkline]
+      properties:
+        symbol: { type: string }
+        name: { type: string }
+        assetClass:
+          type: string
+          enum: [equities, etf, crypto, forex, index]
+        price: { type: number }
+        change: { type: number }
+        changePercent: { type: number }
+        session:
+          type: string
+          enum: [open, closed, 24/7]
+        sparkline:
+          type: array
+          items: { type: number }
+    StrategyPerformance:
+      type: object
+      required: [strategy, label, capital, pnl, roi, winRate, maxDrawdown, profitFactor, avgHoldTime, openTrades, closedTrades, color]
+      properties:
+        strategy:
+          type: string
+          enum: [momentum, breakout, trend_following, mean_reversion]
+        label: { type: string }
+        capital: { type: number }
+        pnl: { type: number }
+        roi: { type: number }
+        winRate: { type: number }
+        maxDrawdown: { type: number }
+        profitFactor: { type: number }
+        avgHoldTime: { type: string }
+        openTrades: { type: number }
+        closedTrades: { type: number }
+        color: { type: string }
+    Dashboard:
+      type: object
+      required: [equity, startingCapital, netPnl, roi, winRate, maxDrawdown, profitFactor, avgHoldTime, openTrades, closedTrades, lastScanAt, scannerStatus, strategies, assetPerformance]
+      properties:
+        equity: { type: number }
+        startingCapital: { type: number }
+        netPnl: { type: number }
+        roi: { type: number }
+        winRate: { type: number }
+        maxDrawdown: { type: number }
+        profitFactor: { type: number }
+        avgHoldTime: { type: string }
+        openTrades: { type: number }
+        closedTrades: { type: number }
+        lastScanAt: { type: string }
+        scannerStatus:
+          type: string
+          enum: [ready, scanning, error]
+        strategies:
+          type: array
+          items: { $ref: "#/components/schemas/StrategyPerformance" }
+        assetPerformance:
+          type: array
+          items: { $ref: "#/components/schemas/AssetPerformance" }
+    AssetPerformance:
+      type: object
+      required: [assetClass, label, pnl, roi, trades]
+      properties:
+        assetClass: { type: string }
+        label: { type: string }
+        pnl: { type: number }
+        roi: { type: number }
+        trades: { type: number }
+    Opportunity:
+      type: object
+      required: [id, symbol, name, assetClass, direction, strategy, strategyLabel, signal, timeframe, price, target, stop, confidence, expectedMove, spreadBps, commission, slippage, overnight, detectedAt, rationale]
+      properties:
+        id: { type: string }
+        symbol: { type: string }
+        name: { type: string }
+        assetClass:
+          type: string
+          enum: [equities, etf, crypto, forex, index]
+        direction:
+          type: string
+          enum: [long, short]
+        strategy:
+          type: string
+          enum: [momentum, breakout, trend_following, mean_reversion]
+        strategyLabel: { type: string }
+        signal: { type: string }
+        timeframe: { type: string }
+        price: { type: number }
+        target: { type: number }
+        stop: { type: number }
+        confidence: { type: number }
+        expectedMove: { type: number }
+        spreadBps: { type: number }
+        commission: { type: number }
+        slippage: { type: number }
+        overnight: { type: number }
+        detectedAt: { type: string }
+        rationale: { type: string }
+    Trade:
+      type: object
+      required: [id, symbol, name, assetClass, direction, strategy, strategyLabel, signal, timeframe, entryPrice, currentPrice, stopPrice, exitPrice, quantity, grossPnl, totalCosts, netPnl, status, openedAt, closedAt, rationale]
+      properties:
+        id: { type: string }
+        symbol: { type: string }
+        name: { type: string }
+        assetClass:
+          type: string
+          enum: [equities, etf, crypto, forex, index]
+        direction:
+          type: string
+          enum: [long, short]
+        strategy:
+          type: string
+          enum: [momentum, breakout, trend_following, mean_reversion]
+        strategyLabel: { type: string }
+        signal: { type: string }
+        timeframe: { type: string }
+        entryPrice: { type: number }
+        currentPrice: { type: number }
+        stopPrice: { type: number }
+        exitPrice:
+          type: [number, "null"]
+        quantity: { type: number }
+        grossPnl: { type: number }
+        totalCosts: { type: number }
+        netPnl: { type: number }
+        status:
+          type: string
+          enum: [open, closed]
+        openedAt: { type: string }
+        closedAt:
+          type: [string, "null"]
+        rationale: { type: string }
+    TradeInput:
+      type: object
+      required: [opportunityId, quantity]
+      properties:
+        opportunityId: { type: string }
+        quantity: { type: number, minimum: 0.0001 }
+    TradeCloseInput:
+      type: object
+      required: [exitPrice]
+      properties:
+        exitPrice: { type: number, minimum: 0 }
+    ScannerRunInput:
+      type: object
+      properties:
+        force:
+          type: boolean
+          default: false
+    ScannerRun:
+      type: object
+      required: [status, scannedAt, scannedSymbols, newOpportunities, duplicatesSkipped, retries]
+      properties:
+        status:
+          type: string
+          enum: [completed, partial, error]
+        scannedAt: { type: string }
+        scannedSymbols: { type: number }
+        newOpportunities: { type: number }
+        duplicatesSkipped: { type: number }
+        retries: { type: number }
 
